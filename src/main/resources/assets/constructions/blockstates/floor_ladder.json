@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,waterlogged=false": { "model": "minecraft:block/ladder" },
+    "facing=east,waterlogged=false": { "model": "minecraft:block/ladder", "y": 90, "uvlock": true },
+    "facing=south,waterlogged=false": { "model": "minecraft:block/ladder", "y": 180, "uvlock": true },
+    "facing=west,waterlogged=false": { "model": "minecraft:block/ladder", "y": 270, "uvlock": true },
+    "facing=north,waterlogged=true": { "model": "minecraft:block/ladder" },
+    "facing=east,waterlogged=true": { "model": "minecraft:block/ladder", "y": 90, "uvlock": true },
+    "facing=south,waterlogged=true": { "model": "minecraft:block/ladder", "y": 180, "uvlock": true },
+    "facing=west,waterlogged=true": { "model": "minecraft:block/ladder", "y": 270, "uvlock": true }
+  }
+}
