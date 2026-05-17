@@ -130,7 +130,8 @@ All Rights Reserved
 
 ## Авторы
 
-Разработано для проекта "Minecraft Apocalypsis"
+Разработано для проекта "POSTWORLD"
+https://discord.gg/DQjnWHftpU
 
 ## Поддержка
 
@@ -139,5 +140,4 @@ All Rights Reserved
 ## Благодарности
 
 - Forge team за отличный фреймворк
-- Авторам moda spawnchest за интеграцию
 # Constructions
