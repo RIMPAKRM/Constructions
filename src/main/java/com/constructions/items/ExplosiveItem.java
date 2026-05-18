@@ -41,10 +41,10 @@ public class ExplosiveItem extends Item {
 
         StructureManager structureManager = StructureManager.get(level);
         BlockPos targetPos = context.getClickedPos();
-        Structure structure = structureManager.getStructureAtPosition(targetPos);
+        Structure structure = structureManager.getStructureAtPositionPrecise(targetPos);
 
         if (structure == null) {
-            structure = structureManager.getStructureAtPosition(targetPos.below());
+            structure = structureManager.getStructureAtPosition(targetPos);
         }
 
         if (structure == null) {

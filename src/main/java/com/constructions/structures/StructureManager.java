@@ -90,6 +90,13 @@ public class StructureManager extends SavedData {
         Structure structure = structures.remove(structureId);
         if (structure != null) {
             structureCreationTime.remove(structureId);
+
+            Set<BlockPos> positionsToInspect = new HashSet<>(structure.getBlockPositions());
+            for (Map.Entry<BlockPos, UUID> entry : blockToStructure.entrySet()) {
+                if (structureId.equals(entry.getValue())) {
+                    positionsToInspect.add(entry.getKey());
+                }
+            }
             
             // Удалить из маппинга блокпозиций - основные блоки
             for (BlockPos pos : structure.getBlockPositions()) {
@@ -100,7 +107,7 @@ public class StructureManager extends SavedData {
             blockToStructure.entrySet().removeIf(entry -> entry.getValue().equals(structureId));
 
             if (level != null) {
-                cleanupSharedSupportBlocks(level, structure);
+                cleanupDestroyedStructureBlocks(level, positionsToInspect);
                 if (refreshNearbyFoundations && structure instanceof FoundationStructure foundationStructure) {
                     refreshNeighboringFoundations(level, foundationStructure);
                 }
@@ -159,26 +166,18 @@ public class StructureManager extends SavedData {
         }
     }
 
-    private void cleanupSharedSupportBlocks(Level level, Structure removedStructure) {
-        for (BlockPos pos : removedStructure.getBlockPositions()) {
-            if (!isSharedSupportBlock(level, pos)) {
-                continue;
-            }
-
+    private void cleanupDestroyedStructureBlocks(Level level, Set<BlockPos> removedPositions) {
+        for (BlockPos pos : removedPositions) {
             long remainingOwners = structures.values().stream()
                     .filter(structure -> structure.getBlockPositions().contains(pos))
                     .count();
 
-            // Убираем только те опоры, которые больше не используются никакой оставшейся структурой.
+            // Если позиция больше не принадлежит ни одной оставшейся структуре, удаляем блок из мира.
             if (remainingOwners == 0) {
                 level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
                 blockToStructure.remove(pos);
             }
         }
-    }
-
-    private boolean isSharedSupportBlock(Level level, BlockPos pos) {
-        return level.getBlockState(pos).is(Blocks.OAK_LOG) || level.getBlockState(pos).is(ModBlocks.FOUNDATION_BASE.get());
     }
 
     /**
@@ -194,6 +193,45 @@ public class StructureManager extends SavedData {
     public Structure getStructureAtPosition(BlockPos pos) {
         UUID structureId = blockToStructure.get(pos);
         return structureId != null ? structures.get(structureId) : null;
+    }
+
+    /**
+     * Точный поиск структуры по позиции для взаимодействий, где важнее реальное
+     * попадание по блоку, чем возможный устаревший маппинг.
+     */
+    public Structure getStructureAtPositionPrecise(BlockPos pos) {
+        Structure bestMatch = null;
+        double bestDistance = Double.MAX_VALUE;
+
+        for (Structure structure : structures.values()) {
+            if (!structure.getBlockPositions().contains(pos)) {
+                continue;
+            }
+
+            if (bestMatch == null) {
+                bestMatch = structure;
+                bestDistance = structure.getBasePosition().distToCenterSqr(pos.getX(), pos.getY(), pos.getZ());
+                continue;
+            }
+
+            boolean currentIsFoundation = structure instanceof FoundationStructure;
+            boolean bestIsFoundation = bestMatch instanceof FoundationStructure;
+            if (bestIsFoundation && !currentIsFoundation) {
+                bestMatch = structure;
+                bestDistance = structure.getBasePosition().distToCenterSqr(pos.getX(), pos.getY(), pos.getZ());
+                continue;
+            }
+
+            if (currentIsFoundation == bestIsFoundation) {
+                double distance = structure.getBasePosition().distToCenterSqr(pos.getX(), pos.getY(), pos.getZ());
+                if (distance < bestDistance) {
+                    bestMatch = structure;
+                    bestDistance = distance;
+                }
+            }
+        }
+
+        return bestMatch;
     }
 
     /**

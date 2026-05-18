@@ -4,14 +4,17 @@ import com.constructions.ConstructionsMod;
 import com.constructions.structures.StructureManager;
 import com.constructions.structures.Structure;
 import com.constructions.structures.AuthCabinetStructure;
+import com.constructions.structures.FoundationStructure;
 import com.constructions.structures.DoorStructure;
 import com.constructions.structures.RoofHoleTrapdoorStructure;
 import com.constructions.structures.ExplosiveManager;
 import com.constructions.ConstructionsConfig;
 import com.constructions.items.ExplosiveItem;
+import com.constructions.items.BuilderHammerItem;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.TickEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
@@ -22,6 +25,8 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Обработчики событий мода Constructions
@@ -74,11 +79,25 @@ public class ModEvents {
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (event.getEntity() instanceof ServerPlayer player && !player.level().isClientSide) {
+            // Если игрок держит молот и натягивает его - блокируем все действия
+            ItemStack itemStack = player.getItemInHand(event.getHand());
+            boolean holdingHammer = itemStack.getItem() instanceof BuilderHammerItem;
+            if (itemStack.getItem() instanceof BuilderHammerItem && player.isUsingItem()) {
+                event.setCanceled(true);
+                return;
+            }
+
             BlockPos clickedPos = event.getPos();
             StructureManager manager = StructureManager.get(player.level());
             
             Structure structure = manager.getStructureAtPosition(clickedPos);
             if (structure instanceof AuthCabinetStructure cabinet) {
+                // Игнорируем взаимодействие со шкафом, если в руках молот,
+                // чтобы запускался сценарий разборки молотом.
+                if (holdingHammer) {
+                    return;
+                }
+
                 event.setCanceled(true);
 
                 if (player.isCrouching()) {
@@ -174,9 +193,10 @@ public class ModEvents {
         }
 
         BlockPos targetPos = structure.getBasePosition();
-        Structure targetStructure = manager.getStructureAtPosition(targetPos);
+        Structure targetStructure = manager.getStructureAtPositionPrecise(targetPos);
+
         if (targetStructure == null) {
-            targetStructure = manager.getStructureAtPosition(targetPos.below());
+            targetStructure = manager.getStructureAtPosition(targetPos);
         }
 
         if (targetStructure == null) {
@@ -196,18 +216,20 @@ public class ModEvents {
 
     private static boolean isPlayerAuthorizedForAccess(ServerPlayer player, BlockPos pos, StructureManager manager) {
         UUID playerId = player.getUUID();
-        int radius = ConstructionsConfig.Server.AUTH_CABINET_RADIUS;
+        int radius = 20;
         
         List<Structure> nearby = manager.getStructuresInRadius(pos, radius);
+        boolean hasCabinetInRadius = false;
         for (Structure s : nearby) {
             if (s instanceof AuthCabinetStructure cabinet) {
+                hasCabinetInRadius = true;
                 // Если шкаф активен - проверяем авторизацию, если неактивен - доступ запрещён
                 return cabinet.isActive() && cabinet.isPlayerAuthorized(playerId);
             }
         }
         
-        // Если нет ближайшего шкафа - доступ разрешён
-        return true;
+        // Если в радиусе 20 блоков вообще нет шкафа — доступ разрешён.
+        return !hasCabinetInRadius;
     }
 
     private static String resolvePlayerName(ServerPlayer viewer, UUID playerId) {
@@ -219,5 +241,100 @@ public class ModEvents {
         }
 
         return playerId.toString();
+    }
+
+    // Отслеживание молотов: UUID игрока -> остаток тиков натяжения в предыдущем тике
+    private static final Map<UUID, Integer> HAMMER_CHARGE_TRACKING = new HashMap<>();
+
+    /**
+     * Обработчик завершения натяжения молота - срабатывает когда остаток тиков упал до 0
+     */
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && !event.player.level().isClientSide && event.player instanceof ServerPlayer player) {
+            ItemStack mainHand = player.getMainHandItem();
+            UUID playerId = player.getUUID();
+            
+            if (mainHand.getItem() instanceof BuilderHammerItem) {
+                int currentTicks = player.getUseItemRemainingTicks();
+                Integer previousTicks = HAMMER_CHARGE_TRACKING.getOrDefault(playerId, -1);
+                
+                // Если натяжение только что завершилось (переход из положительного в 0 или ниже)
+                if (previousTicks > 0 && currentTicks <= 0) {
+                    handleHammerStrike(player, mainHand);
+                }
+                
+                // Сохраняем текущий остаток для следующего тика
+                HAMMER_CHARGE_TRACKING.put(playerId, currentTicks);
+            } else {
+                // Очищаем отслеживание если молот больше не в руке
+                HAMMER_CHARGE_TRACKING.remove(playerId);
+            }
+        }
+    }
+
+    private static void handleHammerStrike(ServerPlayer player, ItemStack hammerStack) {
+        if (player.level().isClientSide) {
+            return;
+        }
+
+        // Ищем блок, на который смотрит игрок
+        if (player.pick(5.0, 0.0f, false) instanceof net.minecraft.world.phys.BlockHitResult blockHit) {
+            BlockPos pos = blockHit.getBlockPos();
+            StructureManager manager = StructureManager.get(player.level());
+            Structure structure = manager.getStructureAtPosition(pos);
+
+            if (structure == null) {
+                return;
+            }
+
+            // Молот работает только для игроков, авторизованных в шкафе.
+            if (!isPlayerAuthorizedForAccess(player, structure.getBasePosition(), manager)) {
+                player.displayClientMessage(Component.literal("§c[Молот] Вы не авторизированы в шкафе авторизации!"), false);
+                return;
+            }
+
+            // Создаём ItemStack из типа структуры
+            ItemStack structureItem = createStructureItemStack(structure);
+
+            // Наносим 1000 урона структуре (гарантирует разрушение)
+            manager.damageStructure(player.level(), structure.getStructureId(), 1000.0, false);
+
+            // Кладём в инвентарь или дропим
+            if (!player.addItem(structureItem)) {
+                net.minecraft.world.entity.item.ItemEntity itemEntity = new net.minecraft.world.entity.item.ItemEntity(
+                        player.level(),
+                        player.getX(),
+                        player.getY(),
+                        player.getZ(),
+                        structureItem
+                );
+                player.level().addFreshEntity(itemEntity);
+            }
+
+            player.displayClientMessage(Component.literal("§a[Молот] Структура разобрана."), false);
+        }
+    }
+
+    /**
+     * Создаёт ItemStack на основе типа разрушенной структуры
+     */
+    private static ItemStack createStructureItemStack(Structure structure) {
+        return switch(structure.getStructureType()) {
+            case "foundation" -> new ItemStack(com.constructions.items.ModItems.FOUNDATION_ITEM.get(), 1);
+            case "wall" -> new ItemStack(com.constructions.items.ModItems.WALL_ITEM.get(), 1);
+            case "door_frame" -> new ItemStack(com.constructions.items.ModItems.DOOR_FRAME_ITEM.get(), 1);
+            case "roof" -> new ItemStack(com.constructions.items.ModItems.ROOF_ITEM.get(), 1);
+            case "roof_hole" -> new ItemStack(com.constructions.items.ModItems.ROOF_HOLE_ITEM.get(), 1);
+            case "roof_hole_trapdoor" -> new ItemStack(com.constructions.items.ModItems.ROOF_HOLE_TRAPDOOR_ITEM.get(), 1);
+            case "floor_ladder" -> new ItemStack(com.constructions.items.ModItems.FLOOR_LADDER_ITEM.get(), 1);
+            case "floor_ladder_no_support" -> new ItemStack(com.constructions.items.ModItems.FLOOR_LADDER_NO_SUPPORT_ITEM.get(), 1);
+            case "wooden_door" -> new ItemStack(com.constructions.items.ModItems.WOODEN_DOOR_ITEM.get(), 1);
+            case "iron_door" -> new ItemStack(com.constructions.items.ModItems.IRON_DOOR_ITEM.get(), 1);
+            case "storage_chest" -> new ItemStack(com.constructions.items.ModItems.STORAGE_CHEST_ITEM.get(), 1);
+            case "auth_cabinet" -> new ItemStack(com.constructions.items.ModItems.AUTH_CABINET_ITEM.get(), 1);
+            case "campfire" -> new ItemStack(com.constructions.items.ModItems.CAMPFIRE_ITEM.get(), 1);
+            default -> new ItemStack(net.minecraft.world.item.Items.DIAMOND, 1);
+        };
     }
 }

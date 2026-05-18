@@ -162,6 +162,8 @@ public abstract class Structure {
         this.currentHealth = tag.getDouble("health");
         this.maxHealth = tag.getDouble("maxHealth");
         this.creationTime = tag.getLong("creationTime");
+        // ВАЖНО: Восстанавливаем блоки структуры после десериализации
+        this.refreshBlockPositions();
     }
 
     @Override

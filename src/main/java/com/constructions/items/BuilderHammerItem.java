@@ -6,33 +6,42 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.UseAnim;
 
 /**
  * Предмет для строительства (молоток строителя)
- * При использовании активирует режим предварительного просмотра структуры
+ * При использовании (ПКМ) натягивается как лук за 10 секунд, затем сносит структуру и кладет в инвентарь
  */
 public class BuilderHammerItem extends Item {
+    private static final int CHARGE_TIME = 200; // 10 секунд = 200 тиков
     
     public BuilderHammerItem(Item.Properties properties) {
-        super(properties);
+        super(properties.stacksTo(1));
+    }
+
+    @Override
+    public UseAnim getUseAnimation(ItemStack pStack) {
+        return UseAnim.BOW;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack pStack) {
+        return CHARGE_TIME;
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
-        
-        if (!level.isClientSide && player.isShiftKeyDown()) {
-            // Сервер обрабатывает удаление строения
-            // TODO: Реализовать логику удаления строения
-            return InteractionResultHolder.success(itemStack);
+        player.startUsingItem(hand);
+        return InteractionResultHolder.success(itemStack);
+    }
+
+    @Override
+    public void onUseTick(Level level, LivingEntity livingEntity, ItemStack itemStack, int timeLeft) {
+        if (livingEntity instanceof Player player && !level.isClientSide) {
+            // Ничего не делаем при натяжении, только отсчитываем время
         }
-        
-        if (level.isClientSide) {
-            // Клиент активирует режим строительства
-            // TODO: Отправить пакет на сервер для активации режима предварительного просмотра
-        }
-        
-        return InteractionResultHolder.pass(itemStack);
     }
 
     @Override
