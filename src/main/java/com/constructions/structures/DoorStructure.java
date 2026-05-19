@@ -15,7 +15,7 @@ import java.util.Set;
  * Может быть открыта с помощью ПКМ
  */
 public class DoorStructure extends Structure {
-    private static final double WOOD_DOOR_HEALTH = 40.0;
+    private static final double WOOD_DOOR_HEALTH = 50.0;
     private static final double IRON_DOOR_HEALTH = 80.0;
     
     private DoorType doorType;

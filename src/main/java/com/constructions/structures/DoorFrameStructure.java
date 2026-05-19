@@ -14,7 +14,7 @@ import java.util.UUID;
 public class DoorFrameStructure extends Structure {
     private static final int WIDTH = 5;
     private static final int HEIGHT = 3;
-    private static final double DEFAULT_MAX_HEALTH = 60.0;
+    private static final double DEFAULT_MAX_HEALTH = 80.0;
     
     // Ориентация дверного проёма (NORTH, SOUTH, EAST, WEST)
     private WallStructure.WallOrientation orientation;

@@ -10,7 +10,7 @@ import java.util.UUID;
  * Металлическая решётка для оконного проёма (1x1 блок)
  */
 public class WindowGrilleStructure extends Structure {
-    private static final double DEFAULT_MAX_HEALTH = 20.0;
+    private static final double DEFAULT_MAX_HEALTH = 70.0;
 
     public WindowGrilleStructure(BlockPos basePosition, UUID owner) {
         super("window_grille", basePosition, owner);

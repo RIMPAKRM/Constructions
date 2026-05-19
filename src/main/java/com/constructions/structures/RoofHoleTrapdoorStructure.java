@@ -11,7 +11,7 @@ import java.util.UUID;
  * Ставится ровно на 1 блок выше отверстия RoofHoleStructure.
  */
 public class RoofHoleTrapdoorStructure extends Structure {
-    private static final double DEFAULT_MAX_HEALTH = 10.0;
+    private static final double DEFAULT_MAX_HEALTH = 60.0;
 
     public RoofHoleTrapdoorStructure(BlockPos basePosition, UUID owner) {
         super("roof_hole_trapdoor", basePosition, owner);

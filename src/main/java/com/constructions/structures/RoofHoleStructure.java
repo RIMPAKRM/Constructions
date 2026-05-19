@@ -12,7 +12,7 @@ import java.util.UUID;
 public class RoofHoleStructure extends Structure {
     private static final int WIDTH = 5;
     private static final int LENGTH = 5;
-    private static final double DEFAULT_MAX_HEALTH = 75.0;
+    private static final double DEFAULT_MAX_HEALTH = 100.0;
 
     public RoofHoleStructure(BlockPos basePosition, UUID owner) {
         super("roof_hole", basePosition, owner);

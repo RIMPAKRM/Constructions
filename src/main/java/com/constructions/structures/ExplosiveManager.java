@@ -1,11 +1,11 @@
 package com.constructions.structures;
 
+import com.constructions.ConstructionsConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
-import java.util.Collection;
 import java.util.*;
 
 /**
@@ -20,16 +20,30 @@ public class ExplosiveManager {
         MEDIUM(35.0, "medium_explosive"),
         STRONG(80.0, "strong_explosive");
 
-        private final double damage;
+        private final double structureDamage;
         private final String itemName;
 
-        ExplosiveType(double damage, String itemName) {
-            this.damage = damage;
+        ExplosiveType(double structureDamage, String itemName) {
+            this.structureDamage = structureDamage;
             this.itemName = itemName;
         }
 
-        public double getDamage() {
-            return damage;
+        public double getStructureDamage() {
+            return structureDamage;
+        }
+
+        public double getPlayerDamage() {
+            return switch (this) {
+                case WEAK -> ConstructionsConfig.Server.WEAK_EXPLOSIVE_DAMAGE_VALUE != null
+                        ? ConstructionsConfig.Server.WEAK_EXPLOSIVE_DAMAGE_VALUE.get()
+                        : ConstructionsConfig.Server.WEAK_EXPLOSIVE_DAMAGE;
+                case MEDIUM -> ConstructionsConfig.Server.MEDIUM_EXPLOSIVE_DAMAGE_VALUE != null
+                        ? ConstructionsConfig.Server.MEDIUM_EXPLOSIVE_DAMAGE_VALUE.get()
+                        : ConstructionsConfig.Server.MEDIUM_EXPLOSIVE_DAMAGE;
+                case STRONG -> ConstructionsConfig.Server.STRONG_EXPLOSIVE_DAMAGE_VALUE != null
+                        ? ConstructionsConfig.Server.STRONG_EXPLOSIVE_DAMAGE_VALUE.get()
+                        : ConstructionsConfig.Server.STRONG_EXPLOSIVE_DAMAGE;
+            };
         }
 
         public String getItemName() {
@@ -71,9 +85,15 @@ public class ExplosiveManager {
 
         Set<BlockPos> structureBlocks = collectDestroyedBlockPositions(structure);
 
-        // Взрыв должен гарантированно ломать целевую структуру, а не оставлять её с остатком HP.
-        // Тип взрывчатки по-прежнему влияет на урон игрокам и силу взрыва.
-        double damage = Math.max(explosiveType.getDamage(), structure.getMaxHealth());
+        // Взрывчатка не должна ваншотить цель с полного HP, но должна уверенно сносить её за несколько подрывов.
+        double baseDamage = explosiveType.getStructureDamage();
+        double currentHealth = structure.getCurrentHealth();
+        double damage = baseDamage;
+
+        if (currentHealth >= structure.getMaxHealth() && baseDamage >= currentHealth) {
+            damage = Math.max(1.0, currentHealth - 1.0);
+        }
+
         structureManager.damageStructure(level, structureId, damage, false);
 
         boolean destroyed = structureManager.getStructure(structureId) == null;
@@ -131,7 +151,7 @@ public class ExplosiveManager {
      * Применить урон игроку от взрыва
      */
     public void damagePlayer(Player player, ExplosiveType explosiveType) {
-        float damage = (float) (explosiveType.getDamage() * 2); // Удвоенный урон для игроков
+        float damage = (float) explosiveType.getPlayerDamage();
         player.hurt(player.level().damageSources().explosion(null), damage);
     }
 }

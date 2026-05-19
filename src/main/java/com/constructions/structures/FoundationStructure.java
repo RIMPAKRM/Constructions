@@ -14,7 +14,7 @@ import net.minecraft.nbt.CompoundTag;
 public class FoundationStructure extends Structure {
     private static final int WIDTH = 5;
     private static final int LENGTH = 5;
-    private static final double DEFAULT_MAX_HEALTH = 100.0;
+    private static final double DEFAULT_MAX_HEALTH = 170.0;
 
     // Глубина опор по углам (вниз от платформы), максимум 3 блока
     private final int[] pillarHeights = new int[4];
