@@ -585,10 +585,22 @@ public final class StructurePlacementUtils {
                     BlockState state = wall.isSupportBlock(pos) ? supportState : wallState;
                     level.setBlockAndUpdate(pos, state);
                 }
-            } else {
+            } else if (structure instanceof DoorFrameStructure) {
                 DoorFrameStructure doorFrame = (DoorFrameStructure) structure;
                 for (BlockPos pos : structure.getBlockPositions()) {
                     BlockState state = doorFrame.isSupportBlock(pos) ? supportState : wallState;
+                    level.setBlockAndUpdate(pos, state);
+                }
+            } else if (structure instanceof WindowFrameStructure) {
+                WindowFrameStructure windowFrame = (WindowFrameStructure) structure;
+                for (BlockPos pos : structure.getBlockPositions()) {
+                    BlockState state = windowFrame.isSupportBlock(pos) ? supportState : wallState;
+                    level.setBlockAndUpdate(pos, state);
+                }
+            } else if (structure instanceof HalfWallStructure) {
+                HalfWallStructure halfWall = (HalfWallStructure) structure;
+                for (BlockPos pos : structure.getBlockPositions()) {
+                    BlockState state = halfWall.isSupportBlock(pos) ? supportState : wallState;
                     level.setBlockAndUpdate(pos, state);
                 }
             }
@@ -985,7 +997,7 @@ public final class StructurePlacementUtils {
 
             BlockPos supportPos = blockPos.below();
             BlockState supportState = level.getBlockState(supportPos);
-            if (!supportState.is(Blocks.OAK_LOG)) {
+            if (!isWallSupportBlock(supportState)) {
                 return false;
             }
 
@@ -1015,7 +1027,7 @@ public final class StructurePlacementUtils {
         }
 
         BlockPos centerSupport = centerPos.below();
-        if (!level.getBlockState(centerSupport).is(Blocks.OAK_LOG)) {
+        if (!isWallSupportBlock(level.getBlockState(centerSupport))) {
             return false;
         }
 
@@ -1176,6 +1188,10 @@ public final class StructurePlacementUtils {
 
     private static boolean isFoundationBlock(BlockState state) {
         return state.is(ModBlocks.FOUNDATION_BASE.get()) || state.is(Blocks.OAK_LOG);
+    }
+
+    private static boolean isWallSupportBlock(BlockState state) {
+        return state.is(Blocks.OAK_LOG);
     }
 
     private static boolean isFoundationOrRoofSupportBlock(BlockState state) {
