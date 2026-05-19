@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/handheld",
   "textures": {
-    "layer0": "minecraft:block/lectern"
+    "layer0": "minecraft:item/lectern"
   }
 }

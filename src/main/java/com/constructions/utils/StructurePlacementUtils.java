@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Half;
@@ -397,8 +398,8 @@ public final class StructurePlacementUtils {
         }
 
         if (structure instanceof WindowGrilleStructure) {
-            if (!isWindowOpening(level, structure.getBasePosition())) {
-                return "§cНе удалось установить решётку: она должна ставиться в оконный проём.";
+            if (!hasWindowFrameAnchor(level, structure.getBasePosition())) {
+                return "§cНе удалось установить решётку: она может ставиться только в отверстие оконной рамы (window_frame_item).";
             }
             return null;
         }
@@ -501,7 +502,7 @@ public final class StructurePlacementUtils {
         }
 
         if (structure instanceof WindowGrilleStructure) {
-            return isWindowOpening(level, structure.getBasePosition());
+            return hasWindowFrameAnchor(level, structure.getBasePosition());
         }
 
         if (structure instanceof RampStructure rampStructure) {
@@ -650,7 +651,16 @@ public final class StructurePlacementUtils {
         }
 
         if (structure instanceof WindowGrilleStructure) {
-            level.setBlockAndUpdate(structure.getBasePosition(), Blocks.IRON_BARS.defaultBlockState());
+            BlockPos grillPos = structure.getBasePosition();
+            BlockState grillState = Blocks.IRON_BARS.defaultBlockState();
+            
+            // Проверяем соседние блоки и подключаем решётку к ним
+            grillState = grillState.setValue(IronBarsBlock.NORTH, shouldConnectTo(level, grillPos, Direction.NORTH));
+            grillState = grillState.setValue(IronBarsBlock.SOUTH, shouldConnectTo(level, grillPos, Direction.SOUTH));
+            grillState = grillState.setValue(IronBarsBlock.EAST, shouldConnectTo(level, grillPos, Direction.EAST));
+            grillState = grillState.setValue(IronBarsBlock.WEST, shouldConnectTo(level, grillPos, Direction.WEST));
+            
+            level.setBlockAndUpdate(grillPos, grillState);
             return true;
         }
 
@@ -1653,14 +1663,50 @@ public final class StructurePlacementUtils {
     }
 
     private static BlockPos resolveWindowGrilleAnchor(Level level, BlockPos clickedPos, Direction face, float yaw) {
+        // Решётка должна ставиться ровно туда, куда смотрит игрок, без смещений
+        // Если кликнули на блок рамы окна - найти отверстие этого конкретного окна
+        
         if (level != null) {
-            BlockPos windowOpening = findWindowOpening(level, clickedPos);
-            if (windowOpening != null) {
-                return windowOpening;
+            // На сервере проверяем через StructureManager
+            if (level instanceof ServerLevel serverLevel) {
+                StructureManager manager = StructureManager.get(serverLevel);
+                Structure clickedStructure = manager.getStructureAtPosition(clickedPos);
+                if (clickedStructure instanceof WindowFrameStructure windowFrame) {
+                    // Если кликнули на рамку, вернуть отверстие именно этой рамки
+                    return windowFrame.getOpeningPosition();
+                }
+            } else {
+                // На клиенте проверяем блок по состоянию
+                BlockState clickedState = level.getBlockState(clickedPos);
+                if (clickedState.is(ModBlocks.STRUCTURE_BLOCK.get())) {
+                    // Кликнули на блок рамы окна - поищем отверстие
+                    BlockPos opening = findWindowOpeningNearby(level, clickedPos);
+                    if (opening != null) {
+                        return opening;
+                    }
+                }
             }
         }
-
-        return clickedPos.relative(face);
+        
+        // Иначе просто вернуть позицию, на которую смотрит игрок
+        return clickedPos;
+    }
+    
+    private static BlockPos findWindowOpeningNearby(Level level, BlockPos framePos) {
+        // Поищем отверстие в окне рядом с позицией рамы
+        // Проверяем позиции вокруг (горизонтально и вертикально)
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -1; dy <= 2; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    BlockPos candidate = framePos.offset(dx, dy, dz);
+                    BlockState state = level.getBlockState(candidate);
+                    if (state.isAir() && isWindowFrameOpeningPattern(level, candidate)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static BlockPos resolveRampAnchor(Level level, BlockPos clickedPos, Direction face, float yaw) {
@@ -1710,9 +1756,11 @@ public final class StructurePlacementUtils {
             return null;
         }
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
+        // Расширяем диапазон поиска: ±2 блока по горизонтали и ±3 блока по вертикали
+        // Чтобы поддерживать окна на разных этажах
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -3; dy <= 3; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
                     BlockPos candidate = clickedPos.offset(dx, dy, dz);
                     if (isWindowOpening(level, candidate)) {
                         return candidate;
@@ -1731,6 +1779,72 @@ public final class StructurePlacementUtils {
 
         if (level instanceof ServerLevel serverLevel) {
             StructureManager manager = StructureManager.get(serverLevel);
+            // Проверяем рядом с позицией и в соседних позициях
+            BlockPos[] neighbors = new BlockPos[] {
+                    pos,
+                    pos.above(),
+                    pos.below(),
+                    pos.north(),
+                    pos.south(),
+                    pos.east(),
+                    pos.west(),
+                    // Расширяем диапазон поиска для поддержки разных этажей
+                    pos.above(2),
+                    pos.below(2),
+                    pos.north(2),
+                    pos.south(2),
+                    pos.east(2),
+                    pos.west(2)
+            };
+            for (BlockPos neighbor : neighbors) {
+                Structure structure = manager.getStructureAtPosition(neighbor);
+                if (structure instanceof WindowFrameStructure windowFrame && windowFrame.isOpeningPosition(pos)) {
+                    return true;
+                }
+            }
+        }
+
+        return isWindowFrameOpeningPattern(level, pos);
+    }
+
+    private static boolean isWindowFrameOpeningPattern(Level level, BlockPos pos) {
+        // Проверяем, что вокруг позиции есть прочные блоки (рама окна) минимум с двух сторон
+        // Решётка ставится в проёме, окруженном блоками рамы
+        int frameBlockCount = 0;
+        
+        BlockPos[] checkPositions = new BlockPos[] {
+            pos.north(), pos.south(), pos.east(), pos.west(),
+            pos.above(), pos.below()
+        };
+        
+        for (BlockPos checkPos : checkPositions) {
+            if (isFrameBlock(level, checkPos)) {
+                frameBlockCount++;
+            }
+        }
+        
+        // Требуем минимум 4 смежных блока рамы (не менее одного с каждой стороны)
+        // Это гарантирует, что это реальное отверстие в раме, а не просто открытое место
+        return frameBlockCount >= 4;
+    }
+    
+    private static boolean isFrameBlock(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        // Проверяем структурные блоки, бревна, доски - что угодно, что может быть рамой
+        return state.is(ModBlocks.STRUCTURE_BLOCK.get()) 
+            || state.is(Blocks.OAK_LOG)
+            || state.is(Blocks.OAK_PLANKS)
+            || state.is(Blocks.OAK_FENCE);
+    }
+
+    private static boolean hasWindowFrameAnchor(Level level, BlockPos pos) {
+        if (level == null) {
+            return false;
+        }
+
+        // На сервере требуем, чтобы рядом была именно WindowFrameStructure
+        if (level instanceof ServerLevel serverLevel) {
+            StructureManager manager = StructureManager.get(serverLevel);
             BlockPos[] neighbors = new BlockPos[] {
                     pos,
                     pos.above(),
@@ -1746,27 +1860,11 @@ public final class StructurePlacementUtils {
                     return true;
                 }
             }
+            return false;
         }
 
+        // На клиенте используем визуальную проверку узора
         return isWindowFrameOpeningPattern(level, pos);
-    }
-
-    private static boolean isWindowFrameOpeningPattern(Level level, BlockPos pos) {
-        // Упрощённая проверка: если вокруг позиции есть блоки (рама) - разрешаем размещение
-        // Оконная решётка может ставиться в проёме между вертикальными/горизонтальными блоками
-        boolean hasHorizontalFrames = (isFrameBlock(level, pos.north()) || isFrameBlock(level, pos.south()));
-        boolean hasVerticalFrames = (isFrameBlock(level, pos.above()) || isFrameBlock(level, pos.below()));
-        
-        return hasHorizontalFrames && hasVerticalFrames;
-    }
-    
-    private static boolean isFrameBlock(Level level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        // Проверяем структурные блоки, бревна, доски - что угодно, что может быть рамой
-        return state.is(ModBlocks.STRUCTURE_BLOCK.get()) 
-            || state.is(Blocks.OAK_LOG)
-            || state.is(Blocks.OAK_PLANKS)
-            || state.is(Blocks.OAK_FENCE);
     }
 
     private static FoundationBounds findFoundationBounds(Level level, BlockPos supportPos) {
@@ -2229,5 +2327,28 @@ public final class StructurePlacementUtils {
             this.maxZ = maxZ;
             this.y = y;
         }
+    }
+
+    private static boolean shouldConnectTo(Level level, BlockPos grillePos, Direction direction) {
+        if (level == null) {
+            return false;
+        }
+
+        BlockPos adjacentPos = grillePos.relative(direction);
+        BlockState adjacentState = level.getBlockState(adjacentPos);
+
+        // Подключаемся к:
+        // - Структурным блокам рамы окна
+        // - Дубовым брёвнам и доскам
+        // - Прочным блокам (не воздух, не жидкость, имеют твёрдую грань)
+        if (adjacentState.is(ModBlocks.STRUCTURE_BLOCK.get())
+            || adjacentState.is(Blocks.OAK_LOG)
+            || adjacentState.is(Blocks.OAK_PLANKS)
+            || adjacentState.is(Blocks.OAK_FENCE)) {
+            return true;
+        }
+
+        // Для остальных блоков проверяем, имеют ли они твёрдую грань с нужной стороны
+        return adjacentState.isFaceSturdy(level, adjacentPos, direction.getOpposite());
     }
 }
