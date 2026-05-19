@@ -357,6 +357,10 @@ public class StructureManager extends SavedData {
             case "wooden_door" -> new DoorStructure(basePosition, owner, DoorStructure.DoorType.WOODEN);
             case "iron_door" -> new DoorStructure(basePosition, owner, DoorStructure.DoorType.IRON);
             case "storage_chest" -> new StorageChestStructure(basePosition, owner);
+            case "window_frame" -> new WindowFrameStructure(basePosition, owner, parseOrientation(tag.getString("orientation")));
+            case "half_wall" -> new HalfWallStructure(basePosition, owner, parseOrientation(tag.getString("orientation")));
+            case "window_grille" -> new WindowGrilleStructure(basePosition, owner);
+            case "ramp" -> new RampStructure(basePosition, owner, parseDirection(tag.getString("facing")));
             case "auth_cabinet" -> new AuthCabinetStructure(basePosition, owner);
             case "campfire" -> new CampfireStructure(basePosition, owner);
             default -> null;
@@ -392,6 +396,16 @@ public class StructureManager extends SavedData {
 
         if (structure instanceof DoorFrameStructure doorFrame) {
             manager.addBlocksToStructure(structure.getStructureId(), doorFrame.getSupportBlocks());
+            return;
+        }
+
+        if (structure instanceof WindowFrameStructure windowFrame) {
+            manager.addBlocksToStructure(structure.getStructureId(), windowFrame.getSupportBlocks());
+            return;
+        }
+
+        if (structure instanceof HalfWallStructure halfWall) {
+            manager.addBlocksToStructure(structure.getStructureId(), halfWall.getSupportBlocks());
             return;
         }
 

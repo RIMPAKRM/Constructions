@@ -53,6 +53,18 @@ public class ModItems {
     public static final RegistryObject<Item> DOOR_FRAME_ITEM = ITEMS.register("door_frame_item",
             () -> new StructureItem(new Item.Properties()
                     .stacksTo(64), "door_frame"));
+
+    public static final RegistryObject<Item> WINDOW_FRAME_ITEM = ITEMS.register("window_frame_item",
+            () -> new StructureItem(new Item.Properties()
+                    .stacksTo(64), "window_frame"));
+
+    public static final RegistryObject<Item> WINDOW_GRILLE_ITEM = ITEMS.register("window_grille_item",
+            () -> new StructureItem(new Item.Properties()
+                    .stacksTo(64), "window_grille"));
+
+    public static final RegistryObject<Item> HALF_WALL_ITEM = ITEMS.register("half_wall_item",
+            () -> new StructureItem(new Item.Properties()
+                    .stacksTo(64), "half_wall"));
     
     public static final RegistryObject<Item> ROOF_ITEM = ITEMS.register("roof_item",
             () -> new StructureItem(new Item.Properties()
@@ -65,6 +77,10 @@ public class ModItems {
     public static final RegistryObject<Item> ROOF_HOLE_TRAPDOOR_ITEM = ITEMS.register("roof_hole_trapdoor_item",
             () -> new StructureItem(new Item.Properties()
                     .stacksTo(64), "roof_hole_trapdoor"));
+
+    public static final RegistryObject<Item> RAMP_ITEM = ITEMS.register("ramp_item",
+            () -> new StructureItem(new Item.Properties()
+                    .stacksTo(64), "ramp"));
 
     public static final RegistryObject<Item> FLOOR_LADDER_ITEM = ITEMS.register("floor_ladder_item",
             () -> new StructureItem(new Item.Properties()

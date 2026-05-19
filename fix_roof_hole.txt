@@ -1,0 +1,32 @@
+        if (isWindowOpening(level, trapdoorPos)) {
+            return true;
+        }
+
+        // Проверка 2: прямо под люком может быть лестница ИЛИ крыша
+        BlockState belowState = level.getBlockState(belowTrapdoor);
+        
+        // Если не лестница - проверяем есть ли крыша с проёмом ниже
+        if (!belowState.is(Blocks.LADDER)) {
+            // Ищем проём крыши
+            if (findRoofHoleBase(level, belowTrapdoor) != null) {
+                return true;
+            }
+            // Если нет ни лестницы ни крыши - отказываем
+            return false;
+        }
+
+        // Проверка 3: под лестницей есть проём крыши или фундамент
+        if (findRoofHoleBase(level, belowTrapdoor) != null) {
+            return true;
+        }
+
+        // Проверка 4: где-то внизу от лестницы должен быть фундамент (чтобы подтвердить базу)
+        for (int dy = 1; dy <= 5; dy++) {
+            BlockPos checkPos = belowTrapdoor.below(dy);
+            BlockState checkState = level.getBlockState(checkPos);
+            if (isFoundationBlock(checkState)) {
+                return true;
+            }
+        }
+
+        return false;

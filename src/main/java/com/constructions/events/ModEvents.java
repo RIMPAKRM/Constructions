@@ -285,6 +285,23 @@ public class ModEvents {
             Structure structure = manager.getStructureAtPosition(pos);
 
             if (structure == null) {
+                net.minecraft.world.level.block.state.BlockState state = player.level().getBlockState(pos);
+                if (state.is(net.minecraft.world.level.block.Blocks.TORCH)
+                        || state.is(net.minecraft.world.level.block.Blocks.WALL_TORCH)) {
+                    player.level().setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                    ItemStack torchStack = new ItemStack(net.minecraft.world.item.Items.TORCH, 1);
+                    if (!player.addItem(torchStack)) {
+                        net.minecraft.world.entity.item.ItemEntity itemEntity = new net.minecraft.world.entity.item.ItemEntity(
+                                player.level(),
+                                player.getX(),
+                                player.getY(),
+                                player.getZ(),
+                                torchStack
+                        );
+                        player.level().addFreshEntity(itemEntity);
+                    }
+                    player.displayClientMessage(Component.literal("§a[Молот] Факел снят."), false);
+                }
                 return;
             }
 
@@ -332,6 +349,10 @@ public class ModEvents {
             case "wooden_door" -> new ItemStack(com.constructions.items.ModItems.WOODEN_DOOR_ITEM.get(), 1);
             case "iron_door" -> new ItemStack(com.constructions.items.ModItems.IRON_DOOR_ITEM.get(), 1);
             case "storage_chest" -> new ItemStack(com.constructions.items.ModItems.STORAGE_CHEST_ITEM.get(), 1);
+            case "window_frame" -> new ItemStack(com.constructions.items.ModItems.WINDOW_FRAME_ITEM.get(), 1);
+            case "window_grille" -> new ItemStack(com.constructions.items.ModItems.WINDOW_GRILLE_ITEM.get(), 1);
+            case "half_wall" -> new ItemStack(com.constructions.items.ModItems.HALF_WALL_ITEM.get(), 1);
+            case "ramp" -> new ItemStack(com.constructions.items.ModItems.RAMP_ITEM.get(), 1);
             case "auth_cabinet" -> new ItemStack(com.constructions.items.ModItems.AUTH_CABINET_ITEM.get(), 1);
             case "campfire" -> new ItemStack(com.constructions.items.ModItems.CAMPFIRE_ITEM.get(), 1);
             default -> new ItemStack(net.minecraft.world.item.Items.DIAMOND, 1);

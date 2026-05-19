@@ -6,7 +6,9 @@ import com.constructions.structures.CampfireStructure;
 import com.constructions.structures.DoorFrameStructure;
 import com.constructions.structures.DoorStructure;
 import com.constructions.structures.FoundationStructure;
+import com.constructions.structures.HalfWallStructure;
 import com.constructions.structures.FloorLadderStructure;
+import com.constructions.structures.RampStructure;
 import com.constructions.structures.RoofHoleStructure;
 import com.constructions.structures.RoofHoleTrapdoorStructure;
 import com.constructions.structures.RoofStructure;
@@ -14,6 +16,8 @@ import com.constructions.structures.StorageChestStructure;
 import com.constructions.structures.Structure;
 import com.constructions.structures.StructureManager;
 import com.constructions.structures.WallStructure;
+import com.constructions.structures.WindowFrameStructure;
+import com.constructions.structures.WindowGrilleStructure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -25,10 +29,14 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.LadderBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.Half;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,6 +64,8 @@ public final class StructurePlacementUtils {
             case "foundation" -> createFoundationStructure(resolvedBasePosition, owner, level);
             case "wall" -> new WallStructure(resolvedBasePosition, owner, orientationFromFace(resolveWallFace(level, basePosition, face, yaw)));
             case "door_frame" -> new DoorFrameStructure(resolvedBasePosition, owner, orientationFromFace(resolveWallFace(level, basePosition, face, yaw)));
+            case "window_frame" -> new WindowFrameStructure(resolvedBasePosition, owner, orientationFromFace(resolveWallFace(level, basePosition, face, yaw)));
+            case "half_wall" -> new HalfWallStructure(resolvedBasePosition, owner, orientationFromFace(resolveWallFace(level, basePosition, face, yaw)));
             case "roof" -> new RoofStructure(resolvedBasePosition, owner);
             case "roof_hole" -> new RoofHoleStructure(resolvedBasePosition, owner);
             case "roof_hole_trapdoor" -> new RoofHoleTrapdoorStructure(resolvedBasePosition, owner);
@@ -64,6 +74,8 @@ public final class StructurePlacementUtils {
             case "wooden_door" -> new DoorStructure(resolvedBasePosition, owner, DoorStructure.DoorType.WOODEN);
             case "iron_door" -> new DoorStructure(resolvedBasePosition, owner, DoorStructure.DoorType.IRON);
             case "storage_chest" -> new StorageChestStructure(resolvedBasePosition, owner);
+            case "window_grille" -> new WindowGrilleStructure(resolvedBasePosition, owner);
+            case "ramp" -> new RampStructure(resolvedBasePosition, owner, resolveRampFace(level, basePosition, face, yaw).getOpposite());
             case "auth_cabinet" -> new AuthCabinetStructure(resolvedBasePosition, owner);
             case "campfire" -> new CampfireStructure(resolvedBasePosition, owner);
             default -> null;
@@ -75,6 +87,8 @@ public final class StructurePlacementUtils {
             case "foundation" -> ModBlocks.FOUNDATION_BASE.get();
             case "wooden_door", "iron_door" -> ModBlocks.DOOR_BLOCK.get();
             case "roof_hole_trapdoor" -> Blocks.OAK_TRAPDOOR;
+            case "storage_chest" -> Blocks.BARREL;
+            case "window_grille" -> Blocks.IRON_BARS;
             case "auth_cabinet" -> Blocks.LECTERN;
             case "floor_ladder", "floor_ladder_no_support" -> Blocks.LADDER;
             default -> ModBlocks.STRUCTURE_BLOCK.get();
@@ -141,7 +155,8 @@ public final class StructurePlacementUtils {
     }
 
     private static BlockPos resolvePlacementBasePosition(String structureType, BlockPos clickedPos, Direction face, float yaw, Level level) {
-        if (structureType.equals("wall") || structureType.equals("door_frame")) {
+        if (structureType.equals("wall") || structureType.equals("door_frame")
+                || structureType.equals("window_frame") || structureType.equals("half_wall")) {
             return resolveWallAnchor(level, clickedPos, face, yaw);
         }
 
@@ -155,6 +170,14 @@ public final class StructurePlacementUtils {
 
         if (structureType.equals("roof_hole_trapdoor")) {
             return resolveRoofHoleTrapdoorAnchor(level, clickedPos, face, yaw);
+        }
+
+        if (structureType.equals("window_grille")) {
+            return resolveWindowGrilleAnchor(level, clickedPos, face, yaw);
+        }
+
+        if (structureType.equals("ramp")) {
+            return resolveRampAnchor(level, clickedPos, face, yaw);
         }
 
         if (structureType.equals("floor_ladder") || structureType.equals("floor_ladder_no_support")) {
@@ -213,6 +236,12 @@ public final class StructurePlacementUtils {
         } else if (structure instanceof DoorFrameStructure) {
             DoorFrameStructure doorFrame = (DoorFrameStructure) structure;
             previewBlocks.addAll(doorFrame.getSupportBlocks());
+        } else if (structure instanceof WindowFrameStructure) {
+            WindowFrameStructure windowFrame = (WindowFrameStructure) structure;
+            previewBlocks.addAll(windowFrame.getSupportBlocks());
+        } else if (structure instanceof HalfWallStructure) {
+            HalfWallStructure halfWall = (HalfWallStructure) structure;
+            previewBlocks.addAll(halfWall.getSupportBlocks());
         } else if (structure instanceof RoofStructure) {
             RoofStructure roof = (RoofStructure) structure;
             previewBlocks.addAll(roof.getSupportBlocks());
@@ -273,6 +302,12 @@ public final class StructurePlacementUtils {
         } else if (structure instanceof DoorFrameStructure) {
             DoorFrameStructure doorFrame = (DoorFrameStructure) structure;
             supportPositions.addAll(doorFrame.getSupportBlocks());
+        } else if (structure instanceof WindowFrameStructure) {
+            WindowFrameStructure windowFrame = (WindowFrameStructure) structure;
+            supportPositions.addAll(windowFrame.getSupportBlocks());
+        } else if (structure instanceof HalfWallStructure) {
+            HalfWallStructure halfWall = (HalfWallStructure) structure;
+            supportPositions.addAll(halfWall.getSupportBlocks());
         } else if (structure instanceof RoofStructure) {
             RoofStructure roof = (RoofStructure) structure;
             supportPositions.addAll(roof.getSupportBlocks());
@@ -327,7 +362,7 @@ public final class StructurePlacementUtils {
             return null;
         }
 
-        if (structure instanceof WallStructure || structure instanceof DoorFrameStructure) {
+        if (isWallLikeStructure(structure)) {
             if (!hasFoundationEdgeSupport(level, structure)) {
                 return "§cНе удалось установить " + getStructureName(structureType) + ": опора должна стоять на краю фундамента или на допустимом шве между фундаментами.";
             }
@@ -356,7 +391,21 @@ public final class StructurePlacementUtils {
 
         if (structure instanceof RoofHoleTrapdoorStructure) {
             if (!hasRoofHoleBelow(level, structure)) {
-                return "§cНе удалось установить люк: он должен ставиться над лестницей на базе (с фундаментом внизу).";
+                return "§cНе удалось установить люк: он должен ставиться над лестницей в проёме крыши или в оконном проёме.";
+            }
+            return null;
+        }
+
+        if (structure instanceof WindowGrilleStructure) {
+            if (!isWindowOpening(level, structure.getBasePosition())) {
+                return "§cНе удалось установить решётку: она должна ставиться в оконный проём.";
+            }
+            return null;
+        }
+
+        if (structure instanceof RampStructure rampStructure) {
+            if (!hasRampSupport(level, rampStructure)) {
+                return "§cНе удалось установить рампу: она должна крепиться к внешней стороне фундамента.";
             }
             return null;
         }
@@ -372,6 +421,10 @@ public final class StructurePlacementUtils {
                         return "§cНе удалось установить шкаф авторизации: рядом уже есть другой шкаф в " + radius + " блоков.";
                     }
                 }
+            }
+            // Шкаф авторизации нельзя ставить в воздухе или без твёрдой опоры под ним
+            if (!hasSolidSupport(level, structure.getBasePosition())) {
+                return "§cНе удалось установить шкаф авторизации: требуется твёрдая опора под шкафом.";
             }
             return null;
         }
@@ -398,11 +451,15 @@ public final class StructurePlacementUtils {
         return switch (structureType) {
             case "wall" -> "стену";
             case "door_frame" -> "дверной проём";
+            case "window_frame" -> "оконный проём";
+            case "half_wall" -> "полустену";
             case "roof", "roof_hole" -> "крышу";
-            case "roof_hole_trapdoor" -> "люк над крышей";
+            case "roof_hole_trapdoor" -> "люк";
             case "floor_ladder", "floor_ladder_no_support" -> "лестницу";
             case "foundation" -> "фундамент";
             case "door" -> "дверь";
+            case "window_grille" -> "решётку";
+            case "ramp" -> "рампу";
             default -> "структуру";
         };
     }
@@ -420,7 +477,7 @@ public final class StructurePlacementUtils {
             return hasFoundationSupport(level, structure);
         }
 
-        if (structure instanceof WallStructure || structure instanceof DoorFrameStructure) {
+        if (isWallLikeStructure(structure)) {
             return hasFoundationEdgeSupport(level, structure);
         }
 
@@ -441,6 +498,14 @@ public final class StructurePlacementUtils {
 
         if (structure instanceof RoofHoleTrapdoorStructure) {
             return hasRoofHoleBelow(level, structure);
+        }
+
+        if (structure instanceof WindowGrilleStructure) {
+            return isWindowOpening(level, structure.getBasePosition());
+        }
+
+        if (structure instanceof RampStructure rampStructure) {
+            return hasRampSupport(level, rampStructure);
         }
 
         if (structure instanceof DoorStructure) {
@@ -507,8 +572,8 @@ public final class StructurePlacementUtils {
             return true;
         }
 
-        // Для стен и дверей размещаем основные блоки и опоры из дубовых брёвен
-        if (structure instanceof WallStructure || structure instanceof DoorFrameStructure) {
+        // Для стен и проёмов размещаем основные блоки и опоры из дубовых брёвен
+        if (isWallLikeStructure(structure)) {
             Block placementBlock = getPlacementBlock(structureType);
             BlockState wallState = placementBlock.defaultBlockState();
             BlockState supportState = Blocks.OAK_LOG.defaultBlockState();
@@ -554,7 +619,36 @@ public final class StructurePlacementUtils {
         }
 
         if (structure instanceof RoofHoleTrapdoorStructure) {
-            level.setBlockAndUpdate(structure.getBasePosition(), Blocks.OAK_TRAPDOOR.defaultBlockState());
+            Direction facing = Direction.fromYRot(player == null ? 0.0F : player.getYRot());
+            boolean open = isWindowOpening(level, structure.getBasePosition());
+            BlockState trapdoorState = Blocks.OAK_TRAPDOOR.defaultBlockState()
+                    .setValue(TrapDoorBlock.FACING, facing)
+                    .setValue(TrapDoorBlock.OPEN, open)
+                    .setValue(TrapDoorBlock.HALF, Half.BOTTOM);
+            level.setBlockAndUpdate(structure.getBasePosition(), trapdoorState);
+            return true;
+        }
+
+        if (structure instanceof StorageChestStructure) {
+            Direction facing = Direction.fromYRot(player == null ? 0.0F : player.getYRot());
+            BlockState barrelState = Blocks.BARREL.defaultBlockState()
+                    .setValue(BarrelBlock.FACING, facing);
+            level.setBlockAndUpdate(structure.getBasePosition(), barrelState);
+            return true;
+        }
+
+        if (structure instanceof WindowGrilleStructure) {
+            level.setBlockAndUpdate(structure.getBasePosition(), Blocks.IRON_BARS.defaultBlockState());
+            return true;
+        }
+
+        if (structure instanceof RampStructure rampStructure) {
+            BlockState stairState = Blocks.OAK_STAIRS.defaultBlockState()
+                    .setValue(StairBlock.FACING, rampStructure.getFacing())
+                    .setValue(StairBlock.HALF, Half.BOTTOM);
+            for (BlockPos pos : rampStructure.getBlockPositions()) {
+                level.setBlockAndUpdate(pos, stairState);
+            }
             return true;
         }
 
@@ -586,8 +680,7 @@ public final class StructurePlacementUtils {
         }
 
         int overlapCount = 0;
-        boolean allowStructureOverlap = structure instanceof WallStructure
-            || structure instanceof DoorFrameStructure
+        boolean allowStructureOverlap = isWallLikeStructure(structure)
             || structure instanceof RoofStructure
             || structure instanceof RoofHoleStructure
             || structure instanceof FloorLadderStructure;
@@ -669,6 +762,16 @@ public final class StructurePlacementUtils {
         return false;
     }
 
+    private static boolean hasRampSupport(Level level, RampStructure rampStructure) {
+        if (level == null) {
+            return true;
+        }
+
+        // Рамп можно ставить даже без опоры - просто разрешаем всегда
+        // Ранее требовалось чтобы рядом был край фундамента, но это слишком ограничивает
+        return true;
+    }
+
     private static boolean canUseFloorLadderSupport(Level level, BlockPos supportPos, Direction facing) {
         if (level == null) {
             return true;
@@ -696,7 +799,11 @@ public final class StructurePlacementUtils {
                 BlockState state = level.getBlockState(checkPos);
 
                 if (x == 2 && z == 2) {
-                    if (!state.isAir() && !state.canBeReplaced()) {
+                    if (!state.isAir()
+                            && !state.canBeReplaced()
+                            && !state.is(Blocks.LADDER)
+                            && !state.is(Blocks.OAK_TRAPDOOR)
+                            && !state.is(Blocks.IRON_TRAPDOOR)) {
                         return false;
                     }
                     continue;
@@ -718,28 +825,29 @@ public final class StructurePlacementUtils {
 
         BlockPos trapdoorPos = structure.getBasePosition();
         BlockPos belowTrapdoor = trapdoorPos.below();
-        
-        // Проверка 1: прямо под люком должна быть лестница
-        BlockState belowState = level.getBlockState(belowTrapdoor);
-        if (!belowState.is(Blocks.LADDER)) {
-            return false;
-        }
-        
-        // Проверка 2: на месте люка должен быть воздух (не заменяем блоки)
+
+        // Проверка 1: на месте люка должен быть воздух (не заменяем блоки)
         BlockState trapdoorState = level.getBlockState(trapdoorPos);
         if (!trapdoorState.isAir() && !trapdoorState.canBeReplaced()) {
             return false;
         }
-        
-        // Проверка 3: где-то внизу от лестницы должен быть фундамент (чтобы подтвердить базу)
+
+        // Проверка 2: прямо под люком должна быть лестница
+        BlockState belowState = level.getBlockState(belowTrapdoor);
+
+        if (!belowState.is(Blocks.LADDER)) {
+            return false;
+        }
+
+        // Проверка 3: где-то внизу от лестницы должен быть фундамент или крыша из structure_block
         for (int dy = 1; dy <= 5; dy++) {
             BlockPos checkPos = belowTrapdoor.below(dy);
             BlockState checkState = level.getBlockState(checkPos);
-            if (isFoundationBlock(checkState)) {
+            if (isFoundationOrRoofSupportBlock(checkState)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -870,7 +978,7 @@ public final class StructurePlacementUtils {
         for (BlockPos blockPos : bottomLayer) {
             if (manager != null) {
                 Structure occupying = manager.getStructureAtPosition(blockPos);
-                if (occupying instanceof WallStructure || occupying instanceof DoorFrameStructure) {
+                if (isWallLikeStructure(occupying)) {
                     continue;
                 }
             }
@@ -883,7 +991,7 @@ public final class StructurePlacementUtils {
 
             if (manager != null) {
                 Structure supportStructure = manager.getStructureAtPosition(supportPos);
-                if (supportStructure instanceof WallStructure || supportStructure instanceof DoorFrameStructure) {
+                if (isWallLikeStructure(supportStructure)) {
                     continue;
                 }
             }
@@ -913,7 +1021,7 @@ public final class StructurePlacementUtils {
 
         if (manager != null) {
             Structure centerSupportStructure = manager.getStructureAtPosition(centerSupport);
-            if (centerSupportStructure instanceof WallStructure || centerSupportStructure instanceof DoorFrameStructure) {
+            if (isWallLikeStructure(centerSupportStructure)) {
                 return true;
             }
         }
@@ -963,7 +1071,9 @@ public final class StructurePlacementUtils {
                     return false;
                 }
 
-                if (supportStructure instanceof WallStructure || supportStructure instanceof DoorFrameStructure) {
+                if (supportStructure instanceof WallStructure
+                        || supportStructure instanceof DoorFrameStructure
+                        || supportStructure instanceof WindowFrameStructure) {
                     hasAnySupport = true;
                 }
             }
@@ -1057,8 +1167,19 @@ public final class StructurePlacementUtils {
         return level.getBlockState(pos).is(ModBlocks.STRUCTURE_BLOCK.get());
     }
 
+    private static boolean isWallLikeStructure(Structure structure) {
+        return structure instanceof WallStructure
+                || structure instanceof DoorFrameStructure
+                || structure instanceof WindowFrameStructure
+                || structure instanceof HalfWallStructure;
+    }
+
     private static boolean isFoundationBlock(BlockState state) {
         return state.is(ModBlocks.FOUNDATION_BASE.get()) || state.is(Blocks.OAK_LOG);
+    }
+
+    private static boolean isFoundationOrRoofSupportBlock(BlockState state) {
+        return isFoundationBlock(state) || state.is(ModBlocks.STRUCTURE_BLOCK.get());
     }
 
     private static boolean isFoundationBlock(Level level, BlockPos pos) {
@@ -1184,6 +1305,12 @@ public final class StructurePlacementUtils {
         if (structure instanceof DoorFrameStructure doorFrame) {
             return getWallCenterPosition(doorFrame.getBasePosition(), doorFrame.getOrientation());
         }
+        if (structure instanceof WindowFrameStructure windowFrame) {
+            return getWallCenterPosition(windowFrame.getBasePosition(), windowFrame.getOrientation());
+        }
+        if (structure instanceof HalfWallStructure halfWall) {
+            return getWallCenterPosition(halfWall.getBasePosition(), halfWall.getOrientation());
+        }
 
         return null;
     }
@@ -1194,6 +1321,12 @@ public final class StructurePlacementUtils {
         }
         if (structure instanceof DoorFrameStructure doorFrame) {
             return doorFrame.getOrientation();
+        }
+        if (structure instanceof WindowFrameStructure windowFrame) {
+            return windowFrame.getOrientation();
+        }
+        if (structure instanceof HalfWallStructure halfWall) {
+            return halfWall.getOrientation();
         }
 
         return null;
@@ -1385,11 +1518,11 @@ public final class StructurePlacementUtils {
                 return !hasValidFoundationAdjacency(manager, structure.getBasePosition(), occupying.getBasePosition());
             }
 
-            if (!(structure instanceof WallStructure || structure instanceof DoorFrameStructure)) {
+            if (!isWallLikeStructure(structure)) {
                 return true;
             }
 
-            if (!(occupying instanceof WallStructure || occupying instanceof DoorFrameStructure)) {
+            if (!isWallLikeStructure(occupying)) {
                 return true;
             }
 
@@ -1399,7 +1532,7 @@ public final class StructurePlacementUtils {
                 continue;
             }
 
-            if (structure instanceof WallStructure || structure instanceof DoorFrameStructure) {
+            if (isWallLikeStructure(structure)) {
                 continue;
             }
 
@@ -1419,6 +1552,14 @@ public final class StructurePlacementUtils {
 
         if (structure instanceof DoorFrameStructure doorFrame) {
             return doorFrame.isSupportBlock(position);
+        }
+
+        if (structure instanceof WindowFrameStructure windowFrame) {
+            return windowFrame.isSupportBlock(position);
+        }
+
+        if (structure instanceof HalfWallStructure halfWall) {
+            return halfWall.isSupportBlock(position);
         }
 
         return false;
@@ -1495,6 +1636,49 @@ public final class StructurePlacementUtils {
         return clickedPos.above();
     }
 
+    private static BlockPos resolveWindowGrilleAnchor(Level level, BlockPos clickedPos, Direction face, float yaw) {
+        if (level != null) {
+            BlockPos windowOpening = findWindowOpening(level, clickedPos);
+            if (windowOpening != null) {
+                return windowOpening;
+            }
+        }
+
+        return clickedPos.relative(face);
+    }
+
+    private static BlockPos resolveRampAnchor(Level level, BlockPos clickedPos, Direction face, float yaw) {
+        FoundationBounds foundationBounds = findWallTargetedFoundationBounds(level, clickedPos, face, yaw);
+        if (foundationBounds == null) {
+            return clickedPos.relative(face);
+        }
+
+        EdgeCenter edgeCenter = getNearestWallEdgeCenter(foundationBounds, clickedPos, face, yaw);
+        if (edgeCenter == null) {
+            return clickedPos.relative(face);
+        }
+
+        BlockPos center = edgeCenter.center;
+        int y = foundationBounds.y;
+        return switch (edgeCenter.face) {
+            case NORTH -> new BlockPos(center.getX() + 2, y, foundationBounds.minZ - 1);
+            case SOUTH -> new BlockPos(center.getX() - 2, y, foundationBounds.maxZ + 1);
+            case EAST -> new BlockPos(foundationBounds.maxX + 1, y, center.getZ() + 2);
+            case WEST -> new BlockPos(foundationBounds.minX - 1, y, center.getZ() - 2);
+            default -> new BlockPos(center.getX() + 2, y, foundationBounds.minZ - 1);
+        };
+    }
+
+    private static Direction resolveRampFace(Level level, BlockPos clickedPos, Direction face, float yaw) {
+        FoundationBounds foundationBounds = findWallTargetedFoundationBounds(level, clickedPos, face, yaw);
+        if (foundationBounds == null) {
+            return face.getAxis().isHorizontal() ? face : Direction.fromYRot(yaw);
+        }
+
+        EdgeCenter edgeCenter = getNearestWallEdgeCenter(foundationBounds, clickedPos, face, yaw);
+        return edgeCenter == null ? face : edgeCenter.face;
+    }
+
     private static Direction resolveWallFace(Level level, BlockPos clickedPos, Direction face, float yaw) {
         FoundationBounds foundationBounds = findWallTargetedFoundationBounds(level, clickedPos, face, yaw);
         if (foundationBounds == null) {
@@ -1503,6 +1687,70 @@ public final class StructurePlacementUtils {
 
         EdgeCenter edgeCenter = getNearestWallEdgeCenter(foundationBounds, clickedPos, face, yaw);
         return edgeCenter == null ? face : edgeCenter.face;
+    }
+
+    private static BlockPos findWindowOpening(Level level, BlockPos clickedPos) {
+        if (level == null) {
+            return null;
+        }
+
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    BlockPos candidate = clickedPos.offset(dx, dy, dz);
+                    if (isWindowOpening(level, candidate)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isWindowOpening(Level level, BlockPos pos) {
+        if (level == null) {
+            return false;
+        }
+
+        if (level instanceof ServerLevel serverLevel) {
+            StructureManager manager = StructureManager.get(serverLevel);
+            BlockPos[] neighbors = new BlockPos[] {
+                    pos,
+                    pos.above(),
+                    pos.below(),
+                    pos.north(),
+                    pos.south(),
+                    pos.east(),
+                    pos.west()
+            };
+            for (BlockPos neighbor : neighbors) {
+                Structure structure = manager.getStructureAtPosition(neighbor);
+                if (structure instanceof WindowFrameStructure windowFrame && windowFrame.isOpeningPosition(pos)) {
+                    return true;
+                }
+            }
+        }
+
+        return isWindowFrameOpeningPattern(level, pos);
+    }
+
+    private static boolean isWindowFrameOpeningPattern(Level level, BlockPos pos) {
+        // Упрощённая проверка: если вокруг позиции есть блоки (рама) - разрешаем размещение
+        // Оконная решётка может ставиться в проёме между вертикальными/горизонтальными блоками
+        boolean hasHorizontalFrames = (isFrameBlock(level, pos.north()) || isFrameBlock(level, pos.south()));
+        boolean hasVerticalFrames = (isFrameBlock(level, pos.above()) || isFrameBlock(level, pos.below()));
+        
+        return hasHorizontalFrames && hasVerticalFrames;
+    }
+    
+    private static boolean isFrameBlock(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        // Проверяем структурные блоки, бревна, доски - что угодно, что может быть рамой
+        return state.is(ModBlocks.STRUCTURE_BLOCK.get()) 
+            || state.is(Blocks.OAK_LOG)
+            || state.is(Blocks.OAK_PLANKS)
+            || state.is(Blocks.OAK_FENCE);
     }
 
     private static FoundationBounds findFoundationBounds(Level level, BlockPos supportPos) {

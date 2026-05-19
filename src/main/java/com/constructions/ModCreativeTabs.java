@@ -27,9 +27,13 @@ public class ModCreativeTabs {
                                                 output.accept(ModItems.FOUNDATION_ITEM.get());
                                                 output.accept(ModItems.WALL_ITEM.get());
                                                 output.accept(ModItems.DOOR_FRAME_ITEM.get());
+                                                output.accept(ModItems.WINDOW_FRAME_ITEM.get());
+                                                output.accept(ModItems.WINDOW_GRILLE_ITEM.get());
+                                                output.accept(ModItems.HALF_WALL_ITEM.get());
                                                 output.accept(ModItems.ROOF_ITEM.get());
                                                 output.accept(ModItems.ROOF_HOLE_ITEM.get());
                                                 output.accept(ModItems.ROOF_HOLE_TRAPDOOR_ITEM.get());
+                                                output.accept(ModItems.RAMP_ITEM.get());
                                                 output.accept(ModItems.FLOOR_LADDER_ITEM.get());
                                                 output.accept(ModItems.FLOOR_LADDER_NO_SUPPORT_ITEM.get());
                                                 output.accept(ModItems.WOODEN_DOOR_ITEM.get());
