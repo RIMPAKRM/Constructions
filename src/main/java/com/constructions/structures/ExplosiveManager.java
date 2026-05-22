@@ -96,6 +96,10 @@ public class ExplosiveManager {
 
         structureManager.damageStructure(level, structureId, damage, false);
 
+        if (level instanceof ServerLevel serverLevel) {
+            RaidBlockManager.getInstance().startRaidBlock(serverLevel, explosivePos);
+        }
+
         boolean destroyed = structureManager.getStructure(structureId) == null;
         if (destroyed && level instanceof ServerLevel serverLevel) {
             for (BlockPos structureBlockPos : structureBlocks) {

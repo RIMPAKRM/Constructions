@@ -9,6 +9,7 @@ import com.constructions.structures.FoundationStructure;
 import com.constructions.structures.HalfWallStructure;
 import com.constructions.structures.FloorLadderStructure;
 import com.constructions.structures.RampStructure;
+import com.constructions.structures.RaidBlockManager;
 import com.constructions.structures.RoofHoleStructure;
 import com.constructions.structures.RoofHoleTrapdoorStructure;
 import com.constructions.structures.RoofStructure;
@@ -255,6 +256,13 @@ public final class StructurePlacementUtils {
     }
 
     public static boolean placeStructure(ServerLevel level, ServerPlayer player, BlockPos basePosition, String structureType, float yaw, Direction face, InteractionHand hand) {
+        if (RaidBlockManager.getInstance().isBuildBlocked(level, basePosition)) {
+            if (player != null) {
+                player.sendSystemMessage(Component.literal("§cВ этой зоне действует рейд-блок. Строительство запрещено."));
+            }
+            return false;
+        }
+
         // Проверка авторизации в шкафе авторизации
         if (!isPlayerAuthorizedForBuild(level, player, basePosition)) {
             if (player != null) {

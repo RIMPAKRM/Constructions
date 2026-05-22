@@ -8,6 +8,7 @@ import com.constructions.structures.FoundationStructure;
 import com.constructions.structures.DoorStructure;
 import com.constructions.structures.RoofHoleTrapdoorStructure;
 import com.constructions.structures.ExplosiveManager;
+import com.constructions.structures.RaidBlockManager;
 import com.constructions.ConstructionsConfig;
 import com.constructions.items.ExplosiveItem;
 import com.constructions.items.BuilderHammerItem;
@@ -15,9 +16,11 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.TickEvent;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -58,10 +61,10 @@ public class ModEvents {
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (event.getEntity() instanceof ServerPlayer player && !player.level().isClientSide) {
-            StructureManager manager = StructureManager.get(player.level());
-            
-            // TODO: Проверить, может ли игрок размещать блоки (режим Adventure)
-            // TODO: Проверить расстояние от зон лута
+            if (RaidBlockManager.getInstance().isBuildBlocked(player.level(), event.getPos())) {
+                event.setCanceled(true);
+                player.displayClientMessage(Component.literal("§cВ этой зоне действует рейд-блок. Строительство запрещено."), false);
+            }
         }
     }
 
@@ -270,6 +273,13 @@ public class ModEvents {
                 // Очищаем отслеживание если молот больше не в руке
                 HAMMER_CHARGE_TRACKING.remove(playerId);
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel serverLevel) {
+            RaidBlockManager.getInstance().tick(serverLevel);
         }
     }
 
