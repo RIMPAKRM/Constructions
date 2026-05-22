@@ -17,7 +17,7 @@ public class ModCreativeTabs {
 
     public static final RegistryObject<CreativeModeTab> CONSTRUCTIONS_TAB = CREATIVE_MODE_TABS.register("constructions_tab",
             () -> CreativeModeTab.builder()
-                    .title(Component.literal("Constructions"))
+                    .title(Component.translatable("itemGroup.constructions.constructions_tab"))
                     .icon(() -> new ItemStack(ModItems.BUILDER_HAMMER.get()))
                     .displayItems((parameters, output) -> {
                                                 output.accept(ModItems.BUILDER_HAMMER.get());
