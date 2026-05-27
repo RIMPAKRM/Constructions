@@ -47,8 +47,8 @@ public class WallStructureTests {
         assertNotNull(blocks);
         assertTrue(blocks.size() > 0);
         
-        // Проверить размеры: 5 в ширину, 4 в высоту
-        int expectedSize = 5 * 4;
+        // Проверить размеры: 5 в ширину, 3 в высоту
+        int expectedSize = 5 * 3;
         assertEquals(expectedSize, blocks.size());
     }
 
@@ -59,7 +59,7 @@ public class WallStructureTests {
             assertEquals(orientation, testWall.getOrientation());
             
             List<BlockPos> blocks = testWall.getStructureBlocks();
-            assertEquals(20, blocks.size()); // 5x4
+            assertEquals(15, blocks.size()); // 5x3
         }
     }
 

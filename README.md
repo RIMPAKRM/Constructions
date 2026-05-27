@@ -34,7 +34,10 @@ Constructions — мод для Minecraft (Forge), добавляющий инс
 - Код: `src/main/java`
 - Ресурсы (модели, текстуры, локали): `src/main/resources/assets/constructions`
 
+**Список предметов**
+- constructions:builder_hammer, constructions:weak_explosive, constructions:medium_explosive, constructions:strong_explosive, constructions:structure_block, constructions:foundation_base, constructions:door_block, constructions:foundation_item, constructions:wall_item, constructions:door_frame_item, constructions:window_frame_item, constructions:window_grille_item, constructions:half_wall_item, constructions:roof_item, constructions:roof_hole_item, constructions:roof_hole_trapdoor_item, constructions:ramp_item, constructions:floor_ladder_item, constructions:floor_ladder_no_support_item, constructions:wooden_door_item, constructions:iron_door_item, constructions:storage_chest_item, constructions:auth_cabinet_item, constructions:campfire_item
+
 **Авторы и лицензия**
 - Сведения в `CREDITS.txt` и `LICENSE.txt`.
 
-Если нужно, могу дополнить README: инструкции по крафту, примеры конфигурации или руководство по тестированию в dev-сборке.
+
